@@ -36,6 +36,34 @@
       "id": "cobblemonretaliation.messages.pokemon_spar.accept"
     },
     {
+      "key": "cobblemonretaliation.pokemon_spar.decline",
+      "lines": [
+        "Not this time.",
+        "I don't really feel like battling right now.",
+        "Maybe another time.",
+        "I'll pass for now.",
+        "A battle? No, not today.",
+        "I think I'll sit this one out.",
+        "Thanks, but I'm not in the mood for a battle.",
+        "Let's leave the Pokemon out of it today."
+      ],
+      "id": "cobblemonretaliation.messages.pokemon_spar.decline"
+    },
+    {
+      "key": "cobblemonretaliation.pokemon_spar.decline_low_reputation",
+      "lines": [
+        "You want to battle me? I don't trust you enough for that.",
+        "I'd rather not put my Pokemon in a battle with you.",
+        "No. I don't know if I can trust you.",
+        "I think you should earn my trust first.",
+        "A friendly battle requires a little more trust than that.",
+        "I'm not comfortable battling you.",
+        "After the way things have been between us? No.",
+        "Maybe earn some goodwill before asking me for a friendly battle."
+      ],
+      "id": "cobblemonretaliation.messages.pokemon_spar.decline_low_reputation"
+    },
+    {
       "key": "cobblemonretaliation.pokemon_spar.unavailable",
       "lines": [
         "I can't spar right now.",

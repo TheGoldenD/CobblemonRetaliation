@@ -5,6 +5,8 @@ import com.jvn.villagerretaliation.dialogue.DialogueContext;
 import com.jvn.villagerretaliation.dialogue.resources.VillagerDialogueResources;
 import com.jvn.villagerretaliation.interaction.VillagerConversationService;
 import com.jvn.villagerretaliation.interaction.VillagerInteractionService;
+import com.jvn.villagerretaliation.reputation.VillagerReputationLevel;
+import com.jvn.villagerretaliation.reputation.VillagerReputationManager;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.npc.Villager;
@@ -20,19 +22,18 @@ public final class PokemonSparringService {
     private static final String LEGACY_SPARRING_OPTION_ID =
             "cobblemon_spar";
 
-    /*
-     * Villager Retaliation datapack message keys.
-     */
     private static final String ACCEPT_MESSAGE =
             "cobblemonretaliation.pokemon_spar.accept";
+
+    private static final String DECLINE_MESSAGE =
+            "cobblemonretaliation.pokemon_spar.decline";
+
+    private static final String LOW_REPUTATION_DECLINE_MESSAGE =
+            "cobblemonretaliation.pokemon_spar.decline_low_reputation";
 
     private static final String UNAVAILABLE_MESSAGE =
             "cobblemonretaliation.pokemon_spar.unavailable";
 
-    /*
-     * These are only used if the datapack message
-     * cannot be found for some reason.
-     */
     private static final List<String> ACCEPT_FALLBACKS =
             List.of(
                     "All right. Let's see what your Pokemon can do.",
@@ -43,6 +44,26 @@ public final class PokemonSparringService {
                     "I've been waiting for a chance to test my team.",
                     "Don't expect me to go easy on you.",
                     "Let's make this a good battle."
+            );
+
+    private static final List<String> DECLINE_FALLBACKS =
+            List.of(
+                    "Not this time.",
+                    "I don't really feel like battling right now.",
+                    "Maybe another time.",
+                    "I'll pass for now.",
+                    "A battle? No, not today.",
+                    "I think I'll sit this one out."
+            );
+
+    private static final List<String> LOW_REPUTATION_DECLINE_FALLBACKS =
+            List.of(
+                    "You want to battle me? I don't trust you enough for that.",
+                    "I'd rather not put my Pokemon in a battle with you.",
+                    "No. I don't know if I can trust you.",
+                    "I think you should earn my trust first.",
+                    "A friendly battle requires a little more trust than that.",
+                    "I'm not comfortable battling you."
             );
 
     private static final List<String> UNAVAILABLE_FALLBACKS =
@@ -65,10 +86,6 @@ public final class PokemonSparringService {
                 LEGACY_SPARRING_OPTION_ID.equals(optionId);
     }
 
-    /**
-     * Called when the player chooses our sparring
-     * dialogue option.
-     */
     public static void startFromDialogue(
             ServerPlayer player,
             Villager villager
@@ -80,15 +97,12 @@ public final class PokemonSparringService {
             return;
         }
 
-        /*
-         * Save the ID because the conversation is
-         * about to be closed.
-         */
         int villagerEntityId =
                 villager.getId();
 
         /*
-         * Close the Villager Retaliation screen.
+         * Close Villager Retaliation's interaction
+         * screen before we continue.
          */
         VillagerConversationService
                 .endForPlayer(
@@ -96,10 +110,6 @@ public final class PokemonSparringService {
                         true
                 );
 
-        /*
-         * Run battle preparation after VR finishes
-         * handling the dialogue packet.
-         */
         player.getServer().execute(
                 () -> prepareBattle(
                         player,
@@ -124,9 +134,6 @@ public final class PokemonSparringService {
             return;
         }
 
-        /*
-         * Basic villager validation.
-         */
         if (!villager.isAlive()
                 || villager.isBaby()) {
 
@@ -141,8 +148,8 @@ public final class PokemonSparringService {
         }
 
         /*
-         * Check obvious battle conflicts BEFORE
-         * the villager agrees to spar.
+         * Do battle-state checks before rolling
+         * reputation acceptance.
          */
         if (RctBattleBridge.isVillagerBusy(villager)
                 ||
@@ -159,10 +166,91 @@ public final class PokemonSparringService {
         }
 
         /*
-         * IMPORTANT:
+         * Read the REAL Villager Retaliation
+         * reputation level between this player
+         * and this specific villager.
+         */
+        VillagerReputationLevel reputationLevel =
+                VillagerReputationManager
+                        .getReputationLevel(
+                                player.serverLevel(),
+                                villager,
+                                player.getUUID()
+                        );
+
+        /*
+         * Very poor reputation:
          *
-         * Send the villager's randomly selected
-         * pre-battle line BEFORE starting RCT.
+         * Friendly sparring is refused outright.
+         *
+         * The outer mixin should normally already
+         * catch villagers who are actively hostile,
+         * but keeping this check here makes the
+         * sparring service safe on its own.
+         */
+        if (reputationLevel == VillagerReputationLevel.HOSTILE
+                ||
+                reputationLevel == VillagerReputationLevel.DESPISED
+                ||
+                reputationLevel == VillagerReputationLevel.FEARED) {
+
+            sendDialogueMessage(
+                    player,
+                    villager,
+                    LOW_REPUTATION_DECLINE_MESSAGE,
+                    randomLowReputationFallback(player)
+            );
+
+            return;
+        }
+
+        /*
+         * Reputation-dependent chance of refusing.
+         */
+        double declineChance =
+                getDeclineChance(
+                        reputationLevel
+                );
+
+        if (player.getRandom().nextDouble()
+                < declineChance) {
+
+            /*
+             * Suspicious villagers use the more
+             * distrustful refusal dialogue.
+             *
+             * Higher-reputation villagers can still
+             * occasionally decline, but for normal
+             * personal reasons instead.
+             */
+            if (reputationLevel
+                    == VillagerReputationLevel.SUSPICIOUS) {
+
+                sendDialogueMessage(
+                        player,
+                        villager,
+                        LOW_REPUTATION_DECLINE_MESSAGE,
+                        randomLowReputationFallback(player)
+                );
+
+            } else {
+
+                sendDialogueMessage(
+                        player,
+                        villager,
+                        DECLINE_MESSAGE,
+                        randomDeclineFallback(player)
+                );
+            }
+
+            return;
+        }
+
+        /*
+         * Accepted.
+         *
+         * Send the pre-battle line before starting
+         * the actual RCT battle.
          */
         sendDialogueMessage(
                 player,
@@ -171,9 +259,6 @@ public final class PokemonSparringService {
                 randomAcceptFallback(player)
         );
 
-        /*
-         * Now start the actual Pokemon battle.
-         */
         UUID battleId =
                 RctBattleBridge
                         .startBattle(
@@ -183,11 +268,6 @@ public final class PokemonSparringService {
 
         if (battleId == null) {
 
-            /*
-             * Something unexpected prevented RCT
-             * from starting after the preliminary
-             * checks passed.
-             */
             sendDialogueMessage(
                     player,
                     villager,
@@ -195,6 +275,58 @@ public final class PokemonSparringService {
                     randomUnavailableFallback(player)
             );
         }
+    }
+
+    private static double getDeclineChance(
+            VillagerReputationLevel reputationLevel
+    ) {
+
+        return switch (reputationLevel) {
+
+            /*
+             * Player is known, but not trusted.
+             */
+            case SUSPICIOUS ->
+                    0.75D;
+
+            /*
+             * Stranger / ordinary relationship.
+             */
+            case NEUTRAL ->
+                    0.30D;
+
+            /*
+             * Villager trusts the player, but can
+             * still occasionally decline.
+             */
+            case TRUSTED ->
+                    0.15D;
+
+            /*
+             * Very unlikely to turn down someone
+             * they respect.
+             */
+            case RESPECTED ->
+                    0.05D;
+
+            /*
+             * Strong relationship:
+             * always willing to friendly spar when
+             * otherwise available.
+             */
+            case REVERED,
+                 ROYALTY ->
+                    0.0D;
+
+            /*
+             * These are handled as outright refusals
+             * before this method is normally reached.
+             */
+            case HOSTILE,
+                 DESPISED,
+                 FEARED ->
+                    1.0D;
+        };
     }
 
     private static void sendDialogueMessage(
@@ -239,6 +371,32 @@ public final class PokemonSparringService {
                         .getRandom()
                         .nextInt(
                                 ACCEPT_FALLBACKS.size()
+                        )
+        );
+    }
+
+    private static String randomDeclineFallback(
+            ServerPlayer player
+    ) {
+
+        return DECLINE_FALLBACKS.get(
+                player
+                        .getRandom()
+                        .nextInt(
+                                DECLINE_FALLBACKS.size()
+                        )
+        );
+    }
+
+    private static String randomLowReputationFallback(
+            ServerPlayer player
+    ) {
+
+        return LOW_REPUTATION_DECLINE_FALLBACKS.get(
+                player
+                        .getRandom()
+                        .nextInt(
+                                LOW_REPUTATION_DECLINE_FALLBACKS.size()
                         )
         );
     }
