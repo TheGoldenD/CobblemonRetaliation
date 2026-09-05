@@ -1,0 +1,53 @@
+{
+  "metadata": {
+    "tags": [
+      "content.dialogue",
+      "dialogue.ambient",
+      "scope.global",
+      "section.messages"
+    ],
+    "topic": "cobblemonretaliation.pokemon_spar"
+  },
+  "messages": [
+    {
+      "key": "cobblemonretaliation.pokemon_spar.accept",
+      "lines": [
+        "Sure. Let's see what your Pokemon can do.",
+        "A Pokemon battle? You're on.",
+        "All right. My team could use the practice.",
+        "Very well. Let's have a friendly match.",
+        "I've been meaning to test my team. Let's battle.",
+        "Sounds good. Let's see which of us has trained harder.",
+        "You want to spar? Then let's do this properly.",
+        "Don't expect me to go easy on you.",
+        "Let's make this a good battle.",
+        "I hope you've trained your Pokemon well.",
+        "Let's see what kind of trainer you are.",
+        "A little competition never hurts.",
+        "You're on. Let's see what you've got.",
+        "I've got time for a battle. Let's begin.",
+        "Very well. Show me what your team can do.",
+        "My Pokemon have been itching for some practice.",
+        "Let's see how our teams match up.",
+        "All right. No hard feelings when I win.",
+        "A friendly spar sounds good to me.",
+        "Then it's settled. Let's battle."
+      ],
+      "id": "cobblemonretaliation.messages.pokemon_spar.accept"
+    },
+    {
+      "key": "cobblemonretaliation.pokemon_spar.unavailable",
+      "lines": [
+        "I can't spar right now.",
+        "Perhaps another time.",
+        "My team isn't ready for a battle right now.",
+        "We'll have to battle later.",
+        "Not now. My Pokemon need some rest.",
+        "I don't think this is a good time for a battle.",
+        "Let's save the battle for another time.",
+        "I'm not able to spar right now."
+      ],
+      "id": "cobblemonretaliation.messages.pokemon_spar.unavailable"
+    }
+  ]
+}
