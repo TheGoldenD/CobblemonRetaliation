@@ -1,0 +1,21 @@
+{
+  "metadata": {
+    "tags": [
+      "content.dialogue",
+      "dialogue.ambient",
+      "scope.global",
+      "section.options"
+    ],
+    "topic": "cobblemonretaliation.pokemon_spar"
+  },
+  "options": [
+    {
+      "id": "cobblemonretaliation.pokemon_spar",
+      "label": "Spar with Pokémon",
+      "type": "dialogue_option",
+      "request": "question",
+      "order": 8,
+      "show_for_babies": false
+    }
+  ]
+}
