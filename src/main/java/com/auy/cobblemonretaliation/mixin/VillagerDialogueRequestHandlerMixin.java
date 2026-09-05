@@ -1,13 +1,9 @@
 package com.auy.cobblemonretaliation.mixin;
 
 import com.auy.cobblemonretaliation.compat.retaliation.PokemonSparringService;
-import com.jvn.villagerretaliation.dialogue.DialogueContext;
-import com.jvn.villagerretaliation.dialogue.normal.DialogueOptionDefinition;
-import com.jvn.villagerretaliation.dialogue.resources.VillagerDialogueResources;
 import com.jvn.villagerretaliation.interaction.InteractionRequestValidator;
 import com.jvn.villagerretaliation.interaction.InteractionTargetContext;
 import com.jvn.villagerretaliation.interaction.VillagerConversationService;
-import com.jvn.villagerretaliation.interaction.VillagerDialogueRequestHandler;
 import com.jvn.villagerretaliation.interaction.VillagerInteractionService;
 import com.jvn.villagerretaliation.reputation.VillagerAggressionPolicy;
 import net.minecraft.server.level.ServerPlayer;
@@ -18,7 +14,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(
-        value = VillagerDialogueRequestHandler.class,
+        value = VillagerInteractionService.class,
         remap = false
 )
 public abstract class VillagerDialogueRequestHandlerMixin {
@@ -27,7 +23,7 @@ public abstract class VillagerDialogueRequestHandlerMixin {
     }
 
     @Inject(
-            method = "handle",
+            method = "handleDialogueRequest",
             at = @At("HEAD"),
             cancellable = true,
             remap = false
@@ -39,14 +35,17 @@ public abstract class VillagerDialogueRequestHandlerMixin {
             CallbackInfo ci
     ) {
 
-        // Not our sparring option.
-        // Let Villager Retaliation process it normally.
-        if (!PokemonSparringService.SPARRING_OPTION_ID.equals(optionId)) {
+        /*
+         * Ignore every Villager Retaliation dialogue
+         * option except our Pokémon spar option.
+         */
+        if (!PokemonSparringService.isSparringOption(optionId)) {
             return;
         }
 
         /*
-         * Validate the active Villager Retaliation conversation.
+         * Validate that the player really has an
+         * active dialogue with this villager.
          */
         InteractionTargetContext target =
                 InteractionRequestValidator
@@ -61,10 +60,11 @@ public abstract class VillagerDialogueRequestHandlerMixin {
             return;
         }
 
-        Villager villager = target.villager();
+        Villager villager =
+                target.villager();
 
         /*
-         * Don't interfere with forced quest/story dialogue.
+         * Don't hijack quest/forced conversations.
          */
         if (VillagerConversationService.isForced(
                 player,
@@ -75,7 +75,8 @@ public abstract class VillagerDialogueRequestHandlerMixin {
         }
 
         /*
-         * Preserve Villager Retaliation's aggression rules.
+         * Preserve Villager Retaliation's normal
+         * hostility rules.
          */
         if (VillagerAggressionPolicy.shouldAttackOnSight(
                 villager,
@@ -93,46 +94,10 @@ public abstract class VillagerDialogueRequestHandlerMixin {
         }
 
         /*
-         * Build VR's actual dialogue context.
-         */
-        DialogueContext context =
-                VillagerInteractionService
-                        .createDialogueContext(
-                                target.level(),
-                                player,
-                                villager
-                        );
-
-        /*
-         * Verify that the spar option genuinely exists
-         * for this villager/context.
-         */
-        DialogueOptionDefinition option =
-                VillagerDialogueResources
-                        .dialogueOption(
-                                context,
-                                optionId
-                        )
-                        .orElse(null);
-
-        if (option == null) {
-
-            VillagerInteractionService
-                    .sendVillagerNotice(
-                            player,
-                            villager,
-                            "interaction.unknown_dialogue_option"
-                    );
-
-            ci.cancel();
-            return;
-        }
-
-        /*
-         * Start Cobblemon sparring.
+         * Our option has now been completely claimed.
          *
-         * PokemonSparringService handles closing the
-         * VR dialogue and starting the RCT battle.
+         * PokemonSparringService closes the dialogue
+         * and starts the RCT/Cobblemon battle.
          */
         PokemonSparringService.startFromDialogue(
                 player,
@@ -140,8 +105,17 @@ public abstract class VillagerDialogueRequestHandlerMixin {
         );
 
         /*
-         * Prevent VR from processing this afterward
-         * as a normal dialogue question.
+         * CRITICAL:
+         *
+         * Do not allow Villager Retaliation to process
+         * this option afterward.
+         *
+         * This is what prevents:
+         *
+         * - question dialogue
+         * - question cooldown
+         * - repeated-question penalty
+         * - reputation gain/loss
          */
         ci.cancel();
     }

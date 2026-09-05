@@ -4,18 +4,41 @@
       "content.dialogue",
       "dialogue.ambient",
       "scope.global",
-      "section.options"
+      "section.messages"
     ],
     "topic": "cobblemonretaliation.pokemon_spar"
   },
-  "options": [
+  "messages": [
     {
-      "id": "cobblemonretaliation.pokemon_spar",
-      "label": "Spar with Pokémon",
-      "type": "dialogue_option",
-      "request": "question",
-      "order": 8,
-      "show_for_babies": false
+      "key": "cobblemonretaliation.pokemon_spar.accept",
+      "lines": [
+        "All right. Let's see what your Pokemon can do.",
+        "A friendly battle? I'm ready.",
+        "Very well. Show me how you battle.",
+        "Let's see which of us has trained harder.",
+        "Sounds good. Let's have a proper Pokemon battle.",
+        "I've been waiting for a chance to test my team.",
+        "Don't expect me to go easy on you.",
+        "Let's make this a good battle.",
+        "You want to spar? Then let's do this properly.",
+        "I hope you've trained your Pokemon well.",
+        "Let's see what kind of trainer you are.",
+        "Very well. My team could use the practice.",
+        "A little competition never hurts.",
+        "You're on. Let's see what you've got.",
+        "I've got time for a battle. Let's begin."
+      ],
+      "id": "cobblemonretaliation.messages.pokemon_spar.accept"
+    },
+    {
+      "key": "cobblemonretaliation.pokemon_spar.unavailable",
+      "lines": [
+        "I can't spar right now.",
+        "Perhaps another time.",
+        "I'm not ready for a battle right now.",
+        "We'll have to battle later."
+      ],
+      "id": "cobblemonretaliation.messages.pokemon_spar.unavailable"
     }
   ]
 }

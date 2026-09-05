@@ -9,6 +9,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.npc.Villager;
 
+import java.util.List;
 import java.util.UUID;
 
 public final class PokemonSparringService {
@@ -16,18 +17,57 @@ public final class PokemonSparringService {
     public static final String SPARRING_OPTION_ID =
             "cobblemonretaliation.pokemon_spar";
 
+    private static final String LEGACY_SPARRING_OPTION_ID =
+            "cobblemon_spar";
+
+    /*
+     * Villager Retaliation datapack message keys.
+     */
     private static final String ACCEPT_MESSAGE =
             "cobblemonretaliation.pokemon_spar.accept";
 
     private static final String UNAVAILABLE_MESSAGE =
             "cobblemonretaliation.pokemon_spar.unavailable";
 
+    /*
+     * These are only used if the datapack message
+     * cannot be found for some reason.
+     */
+    private static final List<String> ACCEPT_FALLBACKS =
+            List.of(
+                    "All right. Let's see what your Pokemon can do.",
+                    "A friendly battle? I'm ready.",
+                    "Very well. Show me how you battle.",
+                    "Let's see which of us has trained harder.",
+                    "Sounds good. Let's have a proper Pokemon battle.",
+                    "I've been waiting for a chance to test my team.",
+                    "Don't expect me to go easy on you.",
+                    "Let's make this a good battle."
+            );
+
+    private static final List<String> UNAVAILABLE_FALLBACKS =
+            List.of(
+                    "I can't spar right now.",
+                    "Perhaps another time.",
+                    "I'm not ready for a battle right now.",
+                    "We'll have to battle later."
+            );
+
     private PokemonSparringService() {
     }
 
+    public static boolean isSparringOption(
+            String optionId
+    ) {
+
+        return SPARRING_OPTION_ID.equals(optionId)
+                ||
+                LEGACY_SPARRING_OPTION_ID.equals(optionId);
+    }
+
     /**
-     * Called after the player selects our Villager
-     * Retaliation dialogue option.
+     * Called when the player chooses our sparring
+     * dialogue option.
      */
     public static void startFromDialogue(
             ServerPlayer player,
@@ -41,17 +81,14 @@ public final class PokemonSparringService {
         }
 
         /*
-         * Save the entity ID before closing the
-         * conversation.
+         * Save the ID because the conversation is
+         * about to be closed.
          */
         int villagerEntityId =
                 villager.getId();
 
         /*
-         * Close VR's interaction screen first.
-         *
-         * notifyClient = true makes VR tell the
-         * client that the conversation has ended.
+         * Close the Villager Retaliation screen.
          */
         VillagerConversationService
                 .endForPlayer(
@@ -60,22 +97,18 @@ public final class PokemonSparringService {
                 );
 
         /*
-         * Queue battle startup after the current
-         * dialogue-request handling has finished.
-         *
-         * This prevents the VR conversation screen
-         * and Cobblemon battle UI from fighting over
-         * the same interaction packet.
+         * Run battle preparation after VR finishes
+         * handling the dialogue packet.
          */
         player.getServer().execute(
-                () -> startQueued(
+                () -> prepareBattle(
                         player,
                         villagerEntityId
                 )
         );
     }
 
-    private static void startQueued(
+    private static void prepareBattle(
             ServerPlayer player,
             int villagerEntityId
     ) {
@@ -88,10 +121,12 @@ public final class PokemonSparringService {
                         );
 
         if (!(entity instanceof Villager villager)) {
-
             return;
         }
 
+        /*
+         * Basic villager validation.
+         */
         if (!villager.isAlive()
                 || villager.isBaby()) {
 
@@ -99,20 +134,45 @@ public final class PokemonSparringService {
                     player,
                     villager,
                     UNAVAILABLE_MESSAGE,
-                    "I can't spar right now."
+                    randomUnavailableFallback(player)
             );
 
             return;
         }
 
         /*
-         * startBattle() already handles:
+         * Check obvious battle conflicts BEFORE
+         * the villager agrees to spar.
+         */
+        if (RctBattleBridge.isVillagerBusy(villager)
+                ||
+                RctBattleBridge.isPlayerInPokemonBattle(player)) {
+
+            sendDialogueMessage(
+                    player,
+                    villager,
+                    UNAVAILABLE_MESSAGE,
+                    randomUnavailableFallback(player)
+            );
+
+            return;
+        }
+
+        /*
+         * IMPORTANT:
          *
-         * - lazy team generation
-         * - villager busy checks
-         * - player battle checks
-         * - temporary RCT trainer creation
-         * - persistent Pokemon copying
+         * Send the villager's randomly selected
+         * pre-battle line BEFORE starting RCT.
+         */
+        sendDialogueMessage(
+                player,
+                villager,
+                ACCEPT_MESSAGE,
+                randomAcceptFallback(player)
+        );
+
+        /*
+         * Now start the actual Pokemon battle.
          */
         UUID battleId =
                 RctBattleBridge
@@ -123,22 +183,18 @@ public final class PokemonSparringService {
 
         if (battleId == null) {
 
+            /*
+             * Something unexpected prevented RCT
+             * from starting after the preliminary
+             * checks passed.
+             */
             sendDialogueMessage(
                     player,
                     villager,
                     UNAVAILABLE_MESSAGE,
-                    "I can't spar right now."
+                    randomUnavailableFallback(player)
             );
-
-            return;
         }
-
-        sendDialogueMessage(
-                player,
-                villager,
-                ACCEPT_MESSAGE,
-                "All right. Let's have a friendly Pokemon battle."
-        );
     }
 
     private static void sendDialogueMessage(
@@ -172,5 +228,31 @@ public final class PokemonSparringService {
                         villager,
                         message
                 );
+    }
+
+    private static String randomAcceptFallback(
+            ServerPlayer player
+    ) {
+
+        return ACCEPT_FALLBACKS.get(
+                player
+                        .getRandom()
+                        .nextInt(
+                                ACCEPT_FALLBACKS.size()
+                        )
+        );
+    }
+
+    private static String randomUnavailableFallback(
+            ServerPlayer player
+    ) {
+
+        return UNAVAILABLE_FALLBACKS.get(
+                player
+                        .getRandom()
+                        .nextInt(
+                                UNAVAILABLE_FALLBACKS.size()
+                        )
+        );
     }
 }
