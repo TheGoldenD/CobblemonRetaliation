@@ -1,0 +1,27 @@
+modLoader="javafml" #mandatory
+loaderVersion="${loader_version_range}" #mandatory
+license="${mod_license}"
+[[mixins]]
+config="${mod_id}.mixins.json"
+[[mods]] #mandatory
+modId="${mod_id}" #mandatory
+# The version number of the mod
+version="${mod_version}" #mandatory
+# A display name for the mod
+displayName="${mod_name}" #mandatory
+description='''
+Integrates Cobblemon with villagers, adding persistent Pokémon teams,
+trainer battles, Pokémon trading and profession-based interactions.
+'''
+[[dependencies.${mod_id}]]
+modId="cobblemon"
+type="required"
+versionRange="[1.7.3,1.8)"
+ordering="AFTER"
+side="BOTH"
+[[dependencies.${mod_id}]]
+modId="rctapi"
+type="required"
+versionRange="[0.15.2-beta,0.16)"
+ordering="AFTER"
+side="BOTH"
